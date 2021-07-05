@@ -1,89 +1,205 @@
-# Голосовой ассистент Гриша
-import os
-import time
 import speech_recognition as sr
-from fuzzywuzzy import fuzz
 import pyttsx3
-import datetime
+from fuzzywuzzy import fuzz
+from datetime import datetime
+import random
+import sys
+from os import system
+from colorama import *
+import webbrowser
  
-# настройки
-opts = {
-    "alias": ('гриша','григорий','гриня','гриш'),    
-    "cmds": {
-        "music": ('включи музыку', 'музыку'),
-        "ctime": ('текущее время','сейчас времени','который час'),
-        "browser": ('браузер','яндекс'),        
-    }
-}
  
-# функции
-def speak(what):
-    print( what )
-    speak_engine.say( what )
-    speak_engine.runAndWait()
-    speak_engine.stop()
+ndel = ['гриша', 'григорий', 'гриня', 'гриш', 'гришаня']
  
-def callback(recognizer, audio):
-    try:
-        voice = recognizer.recognize_google(audio, language = "ru-RU").lower()
-        print("[log] Распознано: " + voice)
-    
-        if voice.startswith(opts["alias"]):
-            # обращаются к Грише
-            cmd = voice
  
-            for x in opts['alias']:
-                cmd = cmd.replace(x, "").strip()
-            
-            # распознаем и выполняем команду
-            cmd = recognize_cmd(cmd)
-            execute_cmd(cmd['cmd'])
+commands = ['текущее время', 'сколько сейчас времени', 'который час',
+            'открой браузер', 'открой интернет', 'запусти браузер',            
+            'пока', 'выключись','до свидания',
+            'найди видео', 'включи видео',
+            'покажи команды', 'помощь', 'команды', 'что ты умеешь',
+            'найди в браузере', 'поиск', 'найди в интернете',
+            'выключи компьютер', 'выруби компьютер', ]
  
-    except sr.UnknownValueError:
-        print("[log] Голос не распознан!")
-    except sr.RequestError as e:
-        print("[log] Неизвестная ошибка, проверьте интернет!")
-
-        print("print")
  
-def recognize_cmd(cmd):
-    RC = {'cmd': '', 'percent': 0}
-    for c,v in opts['cmds'].items():
- 
-        for x in v:
-            vrt = fuzz.ratio(cmd, x)
-            if vrt > RC['percent']:
-                RC['cmd'] = c
-                RC['percent'] = vrt
-    
-    return RC
- 
-def execute_cmd(cmd):
-    if cmd == 'ctime':
-        # сказать текущее время
-        now = datetime.datetime.now()
-        speak("Сейчас " + str(now.hour) + ":" + str(now.minute))
-    
-    elif cmd == 'browser':
-        # открыть браузер
-        os.system("C:\\Users\\black\AppData\\Local\\Yandex\\YandexBrowser\\Application\\browser.exe")
-    
-    elif cmd == 'music':
-        os.system ("C:\\Users\\black\\AppData\\Roaming\\Spotify\\Spotify.exe")
-       
-    else:
-        print('Команда не распознана, повторите!')
- 
-# запуск
 r = sr.Recognizer()
-m = sr.Microphone(device_index = 1)
+engine = pyttsx3.init()
+text = ''
+j = 0
+num_task = 0
+c = False
  
-with m as source:
-    r.adjust_for_ambient_noise(source)
+# Озвучка текста ассистентом 
+def talk(speech):
+    print(speech)
+    engine.say(speech)
+    engine.runAndWait()
  
-speak_engine = pyttsx3.init()
+# Нечеткое сравнение сказанной команды со списком команд ассистента
+def fuzzy_recognizer(rec):
+    global j
+    ans = ''
+    for i in range(len(commands)):
+        k = fuzz.ratio(rec, commands[i])
+        if (k > 70) & (k > j):
+            ans = commands[i]
+            j = k
+    return str(ans)
  
-speak("Добрый день, Гриша слушает")
+# Вырезание лишних слов
+def clear_task():
+    global text
+    for i in ndel:
+        text = text.replace(i, '').strip()
+        text = text.replace('  ', ' ').strip()
  
-stop_listening = r.listen_in_background(m, callback)
-while True: time.sleep(0.1) # infinity loop
+ # Функция прослушивания микрофона и обработки запроса
+def listen():
+    global text
+    text = ''
+    with sr.Microphone(device_index=1) as source:        
+        print("Жду команду...")
+        r.adjust_for_ambient_noise(source)  # Метод для автоматического понижения уровня шума
+        audio = r.listen(source)
+        try:
+            text = r.recognize_google(audio, language="ru-RU").lower()
+        except sr.UnknownValueError:
+            pass
+        print(text)
+        system('cls')        
+        clear_task()
+        return text
+ 
+# Обработка сказанной команды
+def cmd_init():
+    global text, num_task
+    text = fuzzy_recognizer(text)
+    print(text)
+    if text in cmds:
+        if (text != 'пока') & (text != 'выключись') & (text != 'до свидания'):
+            k = ['Секундочку', 'Сейчас сделаю', 'Уже выполняю']
+            talk(random.choice(k))
+        cmds[text]()
+    elif text == '':                
+        talk("Команда не распознана")        
+    num_task += 1
+    if num_task % 10 == 0:  
+        talk('У вас будут еще задания?')
+    engine.runAndWait()
+    engine.stop()
+ 
+# Команда вывода текущего времени
+def time():
+    now = datetime.now()
+    talk("Сейчас " + str(now.hour) + ":" + str(now.minute))
+ 
+# Команда открытия браузера
+def open_brows():
+    webbrowser.open('https://google.com')
+    talk("Браузер открыт!")
+ 
+# Команда выключения компьютера
+def shut(): 
+    global text
+    talk("Подтвердите действие!")
+    print("Подтверждаю - подтвердить действие.\n Отмена - отменить действие.")
+    text = listen()
+    print(text)
+    if (fuzz.ratio(text, 'подтвердить') > 60) or (fuzz.ratio(text, "подтверждаю") > 60):
+        talk('Действие подтверждено')        
+        system('shutdown /s /f /t 3')
+        quite()
+    elif fuzz.ratio(text, 'отмена') > 60:
+        talk("Действие не подтверждено")
+    else:
+        talk("Действие не подтверждено")
+ 
+# Функция приветствия
+def hello():
+    time = int(datetime.now().hour)
+    if time in (6,7,8,9,10,11,12):
+        k = 'Доброе утро! Гриша слушает Вас!'
+    elif time in (13,14,15,16,17,18):
+        k = 'Добрый день! Гриша слушает Вас!'
+    elif time in (19,20,21,22,23):
+        k = 'Добрый вечер! Гриша слушает Вас!'
+    else:
+        k = 'Доброй ночи! Гриша слушает Вас!'
+        
+    talk(k)
+    print("Чтобы узнать мой функционал, скажите: помощь, покажи команды, команды, что ты умеешь.")
+    
+ 
+# Команда завершения программы
+def quite():
+    x = ['Надеюсь мы скоро увидимся!', 'Рад был помочь!', 'Я отключаюсь!', 'До новых встреч!', 'Берегите себя и своих близких!']
+    talk(random.choice(x))
+    engine.stop()
+    system('cls')
+    sys.exit(0)
+
+# Команда поиска видео
+def search_video():
+    global text
+    talk("Какое видео хотите найти?")
+    text = listen()
+    print(text)
+    if not text: return
+    search_term = "".join(text)
+    url = "https://www.youtube.com/results?search_query=" + search_term
+    webbrowser.get().open(url)
+
+# Команда поиска в интернете
+def search_browser():
+    global text
+    talk("Что хотите найти?")    
+    text = listen()
+    print(text)
+    if not text: return
+    search_term = "".join(text)
+    url = "https://www.google.ru/search?q=" + search_term
+    webbrowser.get().open(url)
+
+# Команда, которая выводит список команд
+def help():
+    talk("Вывожу список команд которые могу выполнить...")
+    print ("\nУзнать текущее время: текущее время, сколько сейчас времени, который час.\n"
+            "Открыть браузер: открой браузер, открой интернет, запусти браузер.\n"
+            "Выключить компьютер: выключи компьютер, выруби компьютер.\n"
+            "Найти видео: найди видео, включи видео.\n"
+            "Выполнить поиск в поисковой строке браузера: найди в браузере, найди в интернете, поиск.\n"
+            "Закрыть ассистента: пока, выключись, до свидания.\n") 
+cmds = {
+    'текущее время': time, 'сколько сейчас времени': time, 'который час': time,
+    'открой браузер': open_brows, 'открой интернет': open_brows, 'запусти браузер': open_brows,    
+    'пока': quite, 'выключись': quite, 'до свидания': quite,
+    'выключи компьютер': shut, 'выруби компьютер': shut,
+    'найди видео': search_video, 'включи видео': search_video,
+    'найди в браузере': search_browser, 'поиск': search_browser, 'найди в интернете': search_browser,
+    'покажи команды':help, 'помощь':help, 'команды':help, 'что ты умеешь':help,
+} 
+
+system('cls')
+ 
+def main():
+    global text, j, c           
+    try:
+        if c == False:
+            c = True       
+            hello()
+
+        listen()       
+        
+        if text != '':
+            cmd_init()
+            j = 0                
+            
+    except UnboundLocalError:
+        pass
+    except NameError:
+        pass
+    except TypeError:
+        pass
+ 
+ 
+while True:
+    main()
