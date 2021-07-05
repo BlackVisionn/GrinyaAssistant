@@ -5,10 +5,8 @@ from datetime import datetime
 import random
 import sys
 from os import system
-from colorama import *
 import webbrowser
- 
- 
+
 ndel = ['гриша', 'григорий', 'гриня', 'гриш', 'гришаня']
  
  
@@ -71,7 +69,7 @@ def listen():
  
 # Обработка сказанной команды
 def cmd_init():
-    global text, num_task
+    global text
     text = fuzzy_recognizer(text)
     print(text)
     if text in cmds:
@@ -80,10 +78,8 @@ def cmd_init():
             talk(random.choice(k))
         cmds[text]()
     elif text == '':                
-        talk("Команда не распознана")        
-    num_task += 1
-    if num_task % 10 == 0:  
-        talk('У вас будут еще задания?')
+        talk("Команда не распознана")
+
     engine.runAndWait()
     engine.stop()
  
@@ -179,7 +175,8 @@ cmds = {
 } 
 
 system('cls')
- 
+
+
 def main():
     global text, j, c           
     try:
@@ -188,11 +185,11 @@ def main():
             hello()
 
         listen()       
-        
+
         if text != '':
             cmd_init()
-            j = 0                
-            
+            j = 0
+
     except UnboundLocalError:
         pass
     except NameError:
