@@ -6,6 +6,9 @@ import random
 import sys
 from os import system
 import webbrowser
+import requests
+import re
+
 
 ndel = ['гриша', 'григорий', 'гриня', 'гриш', 'гришаня']
  
@@ -143,6 +146,17 @@ def search_video():
     search_term = "".join(text)
     url = "https://www.youtube.com/results?search_query=" + search_term
     webbrowser.get().open(url)
+    # с парсером
+    talk("Какое видео включить?")
+    text = listen()
+    print(text)
+    if not text: return
+
+    if (int(text) < 8):
+        id_videos = parse(url)
+        url_video = "https://www.youtube.com/watch?v=" + id_videos[int(text) - 1]
+        webbrowser.get().open(url_video)
+
 
 # Команда поиска в интернете
 def search_browser():
@@ -177,6 +191,33 @@ cmds = {
 system('cls')
 
 
+def get_html(input_url):
+    response = requests.get(input_url)
+    return response
+
+
+def get_content(html):
+    temp = ''.join(html.text)
+
+    result_rx = re.findall(r'\"addedVideoId\":\"[^\"]*\"', temp)
+
+    idvideos = []
+    for result_rx_line in result_rx:
+        idvideos.append(result_rx_line.split('\"')[3])
+
+    return idvideos
+
+
+def parse(input_url):
+    html = get_html(input_url)
+    if html.status_code == 200:
+        id_videos = get_content(html)
+        return id_videos
+        print('ok')
+    else:
+        print('ERROR')
+
+
 def main():
     global text, j, c           
     try:
@@ -196,7 +237,7 @@ def main():
         pass
     except TypeError:
         pass
- 
- 
+
+
 while True:
     main()
